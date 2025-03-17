@@ -1,0 +1,10 @@
+<script>
+    if (typeof kendo === 'undefined') {
+        document.write('<script src="~/lib/kendo-ui/js/kendo.all.min.js"><\/script>');
+        document.write('<script src="~/lib/kendo-ui/js/kendo.aspnetmvc.min.js"><\/script>');
+        document.write('<link href="~/lib/kendo-ui/styles/kendo.common.min.css" rel="stylesheet" />');
+        document.write('<link href="~/lib/kendo-ui/styles/kendo.bootstrap.min.css" rel="stylesheet" />');
+        document.write('<link href="~/lib/kendo-ui/styles/kendo.bootstrap.mobile.min.css" rel="stylesheet" />');
+        console.warn('Kendo UI CDN failed, using local fallback.');
+    }
+</script> 

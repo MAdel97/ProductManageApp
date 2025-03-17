@@ -1,0 +1,73 @@
+@model ProductManagementApp.Models.Product
+
+@{
+    ViewData["Title"] = "Edit Product";
+}
+
+<div class="container">
+    <h1>@ViewData["Title"]</h1>
+    <hr />
+    <div class="row">
+        <div class="col-md-8">
+            <form asp-action="Edit" id="editProductForm">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+                
+                <div class="form-group mb-3">
+                    <label asp-for="Name" class="control-label"></label>
+                    <input asp-for="Name" class="form-control k-textbox" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label asp-for="Description" class="control-label"></label>
+                    <textarea asp-for="Description" class="form-control k-textarea" rows="4"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label asp-for="Price" class="control-label"></label>
+                    <input asp-for="Price" class="form-control" id="price" />
+                    <span asp-validation-for="Price" class="text-danger"></span>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <div class="form-check">
+                        <input asp-for="IsAvailable" class="form-check-input" id="isAvailable" />
+                        <label asp-for="IsAvailable" class="form-check-label"></label>
+                    </div>
+                    <span asp-validation-for="IsAvailable" class="text-danger"></span>
+                </div>
+                
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-primary k-button k-primary">Save</button>
+                    <a asp-action="Index" class="btn btn-secondary k-button">Back to List</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            // Initialize Kendo UI NumericTextBox
+            $("#price").kendoNumericTextBox({
+                format: "c",
+                min: 0.01,
+                max: 10000,
+                step: 0.01
+            });
+            
+            // Initialize Kendo UI Switch
+            $("#isAvailable").kendoSwitch({
+                messages: {
+                    checked: "Yes",
+                    unchecked: "No"
+                }
+            });
+        });
+    </script>
+} 

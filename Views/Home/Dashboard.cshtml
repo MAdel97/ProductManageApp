@@ -1,0 +1,170 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container">
+    <h1>@ViewData["Title"]</h1>
+    <p>Welcome to your product management dashboard.</p>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <h2 class="card-title">@ViewBag.ProductCount</h2>
+                    <p class="card-text">Total Products</p>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" asp-controller="Product" asp-action="Index">View Details</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <h2 class="card-title">@ViewBag.AvailableProductCount</h2>
+                    <p class="card-text">Available Products</p>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" asp-controller="Product" asp-action="Index">View Details</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white mb-4">
+                <div class="card-body">
+                    <h2 class="card-title">@ViewBag.TotalValue.ToString("C")</h2>
+                    <p class="card-text">Total Inventory Value</p>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" asp-controller="Product" asp-action="Index">View Details</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar me-1"></i>
+                    Product Statistics
+                </div>
+                <div class="card-body">
+                    <div id="productChart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-table me-1"></i>
+                    Recent Products
+                </div>
+                <div class="card-body">
+                    <div id="recentProductsGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Load product data for the chart and grid
+            $.ajax({
+                url: '/api/ProductApi',
+                method: 'GET',
+                success: function(data) {
+                    // Initialize the chart
+                    initializeChart(data);
+                    
+                    // Initialize the recent products grid
+                    initializeGrid(data);
+                }
+            });
+            
+            function initializeChart(data) {
+                $("#productChart").kendoChart({
+                    title: {
+                        text: "Product Prices"
+                    },
+                    legend: {
+                        position: "bottom"
+                    },
+                    seriesDefaults: {
+                        type: "column"
+                    },
+                    series: [{
+                        name: "Price",
+                        data: data.map(function(p) { return p.price; }),
+                        color: "#0d6efd"
+                    }],
+                    valueAxis: {
+                        labels: {
+                            format: "${0}"
+                        },
+                        title: {
+                            text: "Price"
+                        }
+                    },
+                    categoryAxis: {
+                        categories: data.map(function(p) { return p.name; }),
+                        labels: {
+                            rotation: -45
+                        }
+                    },
+                    tooltip: {
+                        visible: true,
+                        format: "${0}",
+                        template: "#= series.name #: #= kendo.format('{0:c}', value) #"
+                    }
+                });
+            }
+            
+            function initializeGrid(data) {
+                $("#recentProductsGrid").kendoGrid({
+                    dataSource: {
+                        data: data,
+                        pageSize: 5
+                    },
+                    height: 300,
+                    pageable: true,
+                    columns: [
+                        { field: "name", title: "Name" },
+                        { field: "price", title: "Price", format: "{0:c}" },
+                        { 
+                            field: "isAvailable", 
+                            title: "Available",
+                            template: function(dataItem) {
+                                return dataItem.isAvailable ? 
+                                    '<span class="badge bg-success">Yes</span>' : 
+                                    '<span class="badge bg-danger">No</span>';
+                            }
+                        },
+                        { field: "createdAt", title: "Created At", format: "{0:g}" },
+                        { 
+                            command: [{ 
+                                name: "details", 
+                                text: "View",
+                                click: function(e) {
+                                    e.preventDefault();
+                                    var dataItem = this.dataItem($(e.currentTarget).closest("tr"));
+                                    window.location.href = '/Product/Details/' + dataItem.id;
+                                }
+                            }], 
+                            title: "Actions", 
+                            width: 100 
+                        }
+                    ]
+                });
+            }
+        });
+    </script>
+} 

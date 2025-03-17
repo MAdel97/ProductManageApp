@@ -1,0 +1,561 @@
+@{
+    ViewData["Title"] = "Products";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-5 fw-bold">@ViewData["Title"]</h1>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i> Add New Product
+        </a>
+    </div>
+
+    <!-- Simple stats row -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-light border-primary">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-box-open text-primary me-3 fa-2x"></i>
+                        <div>
+                            <div class="small text-muted">Total Products</div>
+                            <div class="fs-4 fw-bold" id="totalProducts">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-light border-success">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle text-success me-3 fa-2x"></i>
+                        <div>
+                            <div class="small text-muted">In Stock</div>
+                            <div class="fs-4 fw-bold" id="inStockProducts">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-light border-danger">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-times-circle text-danger me-3 fa-2x"></i>
+                        <div>
+                            <div class="small text-muted">Out of Stock</div>
+                            <div class="fs-4 fw-bold" id="outOfStockProducts">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-light border-info">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-dollar-sign text-info me-3 fa-2x"></i>
+                        <div>
+                            <div class="small text-muted">Total Value</div>
+                            <div class="fs-4 fw-bold" id="totalValue">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug info section -->
+    <div id="debugInfo" class="alert alert-info mb-4">
+        <h5>Debug Information</h5>
+        <div id="apiResponse">Loading API data...</div>
+    </div>
+
+    <!-- Grid card -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-white py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-table me-2"></i> Product List
+                </h5>
+                <div>
+                    <button id="addTestData" class="btn btn-sm btn-outline-success me-2">
+                        <i class="fas fa-plus"></i> Add Test Data
+                    </button>
+                    <button id="refreshGrid" class="btn btn-sm btn-outline-primary me-2">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button id="exportExcel" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-file-excel"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div id="productsGrid" style="width: 100%;"></div>
+        </div>
+    </div>
+    
+    <!-- Separate pagination card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body py-2">
+            <div id="customPager" class="d-flex justify-content-between align-items-center"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            console.log("Document ready, initializing grid...");
+            
+            // Load API data immediately for debugging
+            $.ajax({
+                url: "/api/ProductApi",
+                method: "GET",
+                success: function(data) {
+                    console.log("API Response:", data);
+                    $("#apiResponse").html("<pre>" + JSON.stringify(data, null, 2) + "</pre>");
+                },
+                error: function(xhr, status, error) {
+                    console.error("API Error:", error);
+                    $("#apiResponse").html("<div class='text-danger'>Error: " + error + "<br>Status: " + status + "<br>Response: " + xhr.responseText + "</div>");
+                }
+            });
+            
+            // Add test data button
+            $("#addTestData").click(function() {
+                var testProducts = [
+                    {
+                        name: "Test Product 1",
+                        description: "This is a test product",
+                        price: 19.99,
+                        isAvailable: true
+                    },
+                    {
+                        name: "Test Product 2",
+                        description: "Another test product",
+                        price: 29.99,
+                        isAvailable: false
+                    }
+                ];
+                
+                $.each(testProducts, function(index, product) {
+                    $.ajax({
+                        url: "/api/ProductApi",
+                        method: "POST",
+                        contentType: "application/json",
+                        data: JSON.stringify(product),
+                        success: function() {
+                            console.log("Test product added:", product);
+                            dataSource.read();
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("Error adding test product:", error);
+                        }
+                    });
+                });
+            });
+            
+            // Create the data source
+            var dataSource = new kendo.data.DataSource({
+                transport: {
+                    read: {
+                        url: "/api/ProductApi",
+                        dataType: "json",
+                        type: "GET"
+                    },
+                    update: {
+                        url: function(data) {
+                            return "/api/ProductApi/" + data.id;
+                        },
+                        type: "PUT",
+                        dataType: "json",
+                        contentType: "application/json"
+                    },
+                    destroy: {
+                        url: function(data) {
+                            return "/api/ProductApi/" + data.id;
+                        },
+                        type: "DELETE"
+                    },
+                    parameterMap: function(data, type) {
+                        if (type === "update") {
+                            return JSON.stringify(data);
+                        }
+                        return data;
+                    }
+                },
+                schema: {
+                    model: {
+                        id: "id",
+                        fields: {
+                            id: { type: "number", editable: false },
+                            name: { type: "string", validation: { required: true } },
+                            description: { type: "string" },
+                            price: { type: "number", validation: { required: true, min: 0.01 } },
+                            isAvailable: { type: "boolean" },
+                            createdAt: { type: "date", editable: false }
+                        }
+                    }
+                },
+                pageSize: 10,
+                serverPaging: false,
+                serverSorting: false,
+                serverFiltering: false,
+                sort: { field: "name", dir: "asc" },
+                error: function(e) {
+                    console.error("DataSource error:", e);
+                },
+                change: function() {
+                    console.log("DataSource changed");
+                    updateSummaryStats();
+                    updateCustomPager();
+                }
+            });
+            
+            // Initialize the grid without built-in pager
+            try {
+                $("#productsGrid").kendoGrid({
+                    dataSource: dataSource,
+                    height: 550,
+                    scrollable: true,
+                    sortable: true,
+                    filterable: true,
+                    pageable: false, // Disable built-in pager
+                    toolbar: ["search"],
+                    columns: [
+                        { field: "id", title: "ID", width: 70 },
+                        { field: "name", title: "Product", width: 250 },
+                        { field: "description", title: "Description", width: 300 },
+                        { 
+                            field: "price", 
+                            title: "Price", 
+                            width: 120,
+                            format: "{0:c}",
+                            attributes: { style: "text-align: right;" }
+                        },
+                        { 
+                            field: "isAvailable", 
+                            title: "Status", 
+                            width: 120,
+                            template: function(dataItem) {
+                                return dataItem.isAvailable ? 
+                                    '<span class="badge bg-success">In Stock</span>' : 
+                                    '<span class="badge bg-danger">Out of Stock</span>';
+                            }
+                        },
+                        { 
+                            field: "createdAt", 
+                            title: "Created", 
+                            width: 150,
+                            format: "{0:MM/dd/yyyy}"
+                        },
+                        { 
+                            command: ["edit", "destroy"], 
+                            title: "Actions", 
+                            width: 200 
+                        }
+                    ],
+                    editable: "inline",
+                    dataBound: function() {
+                        console.log("Grid data bound");
+                        updateSummaryStats();
+                        updateCustomPager();
+                    }
+                });
+                
+                console.log("Grid initialized successfully");
+                
+                // Initialize the custom pager
+                initializeCustomPager();
+                
+            } catch (error) {
+                console.error("Error initializing grid:", error);
+            }
+            
+            // Function to initialize the custom pager
+            function initializeCustomPager() {
+                // Initial render of the pager
+                updateCustomPager();
+            }
+            
+            // Function to update the custom pager
+            function updateCustomPager() {
+                var $pager = $("#customPager");
+                $pager.empty();
+                
+                var ds = dataSource;
+                var page = ds.page();
+                var pageSize = ds.pageSize();
+                var total = ds.total();
+                var totalPages = Math.ceil(total / pageSize);
+                
+                // Create page size container
+                var $pageSizeContainer = $("<div>").addClass("page-size-container");
+                $pageSizeContainer.append($("<span>").text("Items per page:"));
+                
+                var $pageSizeDropdown = $("<select>").addClass("form-select form-select-sm d-inline-block w-auto ms-2");
+                [10, 25, 50, 100].forEach(function(size) {
+                    var $option = $("<option>").val(size).text(size);
+                    if (size === pageSize) {
+                        $option.prop("selected", true);
+                    }
+                    $pageSizeDropdown.append($option);
+                });
+                
+                $pageSizeDropdown.on("change", function() {
+                    ds.pageSize(parseInt($(this).val()));
+                });
+                
+                $pageSizeContainer.append($pageSizeDropdown);
+                $pager.append($pageSizeContainer);
+                
+                // Create navigation buttons container
+                var $navContainer = $("<div>").addClass("nav-buttons-container");
+                
+                // First page button
+                var $firstBtn = $("<button>").addClass("btn btn-sm btn-outline-secondary me-1")
+                    .html('<i class="fas fa-angle-double-left"></i>')
+                    .prop("disabled", page === 1)
+                    .on("click", function() {
+                        ds.page(1);
+                    });
+                $navContainer.append($firstBtn);
+                
+                // Previous page button
+                var $prevBtn = $("<button>").addClass("btn btn-sm btn-outline-secondary me-1")
+                    .html('<i class="fas fa-angle-left"></i>')
+                    .prop("disabled", page === 1)
+                    .on("click", function() {
+                        ds.page(page - 1);
+                    });
+                $navContainer.append($prevBtn);
+                
+                // Page number buttons
+                var startPage = Math.max(1, page - 2);
+                var endPage = Math.min(totalPages, startPage + 4);
+                
+                if (endPage - startPage < 4 && startPage > 1) {
+                    startPage = Math.max(1, endPage - 4);
+                }
+                
+                for (var i = startPage; i <= endPage; i++) {
+                    var $pageBtn = $("<button>").addClass("btn btn-sm me-1")
+                        .text(i)
+                        .on("click", (function(pageNum) {
+                            return function() {
+                                ds.page(pageNum);
+                            };
+                        })(i));
+                    
+                    if (i === page) {
+                        $pageBtn.removeClass("btn-outline-secondary").addClass("btn-primary");
+                    } else {
+                        $pageBtn.addClass("btn-outline-secondary");
+                    }
+                    
+                    $navContainer.append($pageBtn);
+                }
+                
+                // Next page button
+                var $nextBtn = $("<button>").addClass("btn btn-sm btn-outline-secondary me-1")
+                    .html('<i class="fas fa-angle-right"></i>')
+                    .prop("disabled", page === totalPages)
+                    .on("click", function() {
+                        ds.page(page + 1);
+                    });
+                $navContainer.append($nextBtn);
+                
+                // Last page button
+                var $lastBtn = $("<button>").addClass("btn btn-sm btn-outline-secondary me-1")
+                    .html('<i class="fas fa-angle-double-right"></i>')
+                    .prop("disabled", page === totalPages)
+                    .on("click", function() {
+                        ds.page(totalPages);
+                    });
+                $navContainer.append($lastBtn);
+                
+                $pager.append($navContainer);
+                
+                // Create info text container
+                var $infoContainer = $("<div>").addClass("page-info");
+                var start = (page - 1) * pageSize + 1;
+                var end = Math.min(start + pageSize - 1, total);
+                var infoText = "Showing " + start + " to " + end + " of " + total + " items";
+                $infoContainer.text(infoText);
+                $pager.append($infoContainer);
+            }
+
+            // Function to update summary statistics
+            function updateSummaryStats() {
+                $.ajax({
+                    url: "/api/DashboardApi/stats",
+                    method: "GET",
+                    success: function(data) {
+                        $("#totalProducts").text(data.totalProducts);
+                        $("#inStockProducts").text(data.inStock);
+                        $("#outOfStockProducts").text(data.outOfStock);
+                        $("#totalValue").text(kendo.toString(data.totalValue, "c"));
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error fetching stats:", error);
+                    }
+                });
+            }
+
+            // Refresh grid
+            $("#refreshGrid").click(function() {
+                dataSource.read();
+            });
+
+            // Export to Excel
+            $("#exportExcel").click(function() {
+                $("#productsGrid").data("kendoGrid").saveAsExcel();
+            });
+        });
+    </script>
+
+    <style>
+        /* Simple grid styling */
+        .k-grid {
+            border: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+        
+        .k-grid-header th {
+            font-weight: 600;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            padding: 0.75rem;
+        }
+        
+        .k-grid tr:hover {
+            background-color: rgba(0,123,255,0.05);
+        }
+        
+        .k-grid td {
+            border-bottom: 1px solid #e9ecef;
+            padding: 0.5rem 0.75rem;
+            vertical-align: middle;
+        }
+        
+        /* Badge styling */
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.35em 0.65em;
+        }
+        
+        /* Card styling */
+        .card {
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        /* Fix for grid width */
+        .k-grid,
+        .k-grid-header-wrap,
+        .k-grid-content {
+            width: 100% !important;
+        }
+        
+        .k-grid-content table,
+        .k-grid-header table {
+            width: 100% !important;
+        }
+        
+        /* Fix for button alignment */
+        .k-grid .k-button {
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .k-grid .k-grid-toolbar {
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .k-grid .k-grid-search {
+            margin-right: auto;
+            width: 250px;
+        }
+        
+        /* Fix for command column */
+        .k-grid .k-command-cell {
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        .k-grid .k-command-cell .k-button {
+            min-width: 70px;
+        }
+        
+        /* Debug section */
+        #debugInfo {
+            max-height: 300px;
+            overflow: auto;
+        }
+        
+        #apiResponse pre {
+            max-height: 200px;
+            overflow: auto;
+        }
+        
+        /* Custom pager styling */
+        #customPager {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        #customPager .page-size-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        #customPager .page-size-container span {
+            margin-right: 8px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        #customPager .nav-buttons-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        #customPager .page-info {
+            font-size: 14px;
+            color: #6c757d;
+            background-color: #e9ecef;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        
+        /* Responsive styling for custom pager */
+        @@media (max-width: 768px) {
+            #customPager {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            #customPager .page-size-container,
+            #customPager .nav-buttons-container,
+            #customPager .page-info {
+                margin-bottom: 10px;
+                width: 100%;
+                justify-content: center;
+                text-align: center;
+            }
+            
+            #customPager .page-info {
+                order: -1;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+} 
